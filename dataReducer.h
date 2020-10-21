@@ -7,6 +7,7 @@
 #include <sstream>
 #include <vector>
 #include <numeric>
+#include <string>
 #include <functional>
 
 struct iniParams {
@@ -21,23 +22,20 @@ struct iniParams {
 class DataReducer {
 
 public:
-	DataReducer(iniParams param);
+	DataReducer(iniParams param, std::string file);
 
 	void findPulses(std::ifstream &ifs);
 
 private:
 	iniParams ip;
+	std::string fileName;
 	std::vector<int> normal;
 	std::vector<int> smooth;
+	
 	int getNext(std::ifstream &ifs);
-	int negate(int);
-
 	void copyToSmooth();
-	
 	void smoothIt(std::vector<int>::iterator& i);
-	
 	void getPulses(std::vector<int>::iterator start, std::vector<int>::iterator end, std::function<bool(std::vector<int>::iterator)>);
-
 	void myForEach(std::vector<int>::iterator start, std::vector<int>::iterator end);
 	bool testPiggyback(std::vector<int>::iterator i);
 	

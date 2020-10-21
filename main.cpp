@@ -41,9 +41,9 @@ int main(int argc, char* argv[]) {
 				ifstream file(path);
 				if (file.is_open()) {
 				//dr.findPulses(); called on each file in directory with .dat ending
-					DataReducer dr(ip);
+					DataReducer dr(ip, path);
 					dr.findPulses(file);
-
+					cout << endl;
 				}
 				else {
 					cout << "Failed to open" + path << endl;

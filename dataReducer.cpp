@@ -9,7 +9,7 @@ void DataReducer::pulse(std::vector<int>::iterator i) {
 }
 
 bool DataReducer::testPiggyback(std::vector<int>::iterator i) {
-	for (int j = 1; j <= ip.pulse_delta; ++j) { // i is pointing at start of pulse
+	for (int j = ip.pulse_delta; j > 0; --j) { // start at end of pulse delta
 		if (ip.vt < *((i + j) + 2) - *(i + j)) { // if another pulse is inside pulse_delta
 			int count_below_drop_ratio = 0;
 			for (int k = 1; k < j; ++k) { // j is the start of the second pulse
@@ -25,9 +25,10 @@ bool DataReducer::testPiggyback(std::vector<int>::iterator i) {
 }
 
 
-DataReducer::DataReducer(iniParams param)
+DataReducer::DataReducer(iniParams param, std::string file)
 {
 	ip = param;
+	fileName = file;
 }
 
 void DataReducer::findPulses(std::ifstream& ifs)
@@ -58,13 +59,10 @@ int DataReducer::getNext(std::ifstream& ifs)
 	if (ifs.peek() == '\r') { // might not be neededg
 		ifs.get();
 	}
-	return this->negate(std::atoi(sBuilder.str().c_str()));
+	return -1 * (std::atoi(sBuilder.str().c_str()));
 }
 
-int DataReducer::negate(int num)
-{
-	return num * -1;
-}
+
 
 void DataReducer::copyToSmooth()
 {
@@ -103,7 +101,7 @@ void DataReducer::getPulses(std::vector<int>::iterator start, std::vector<int>::
 			}
 			else {
 				pulse(start); // print, calculate area
-				std::cout << "(" << std::accumulate(start, start + ip.width - 1, 0) << ")" << std::endl;
+				std::cout << "(" << std::accumulate(start, start + ip.width, 0) << ")" << std::endl;
 			}
 			while (*start <= *(start + 1)) {
 				++start;
