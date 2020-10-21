@@ -9,21 +9,27 @@ void DataReducer::pulse(std::vector<int>::iterator i) {
 }
 
 bool DataReducer::testPiggyback(std::vector<int>::iterator i) {
-	for (int j = ip.pulse_delta; j > 0; --j) { // start at end of pulse delta
-		if (ip.vt < *((i + j) + 2) - *(i + j)) { // if another pulse is inside pulse_delta
-			int count_below_drop_ratio = 0;
-			for (int k = 1; k < j; ++k) { // j is the start of the second pulse
-				if (*(i + k) < (ip.drop_ratio * (*i))) {// if point of interest is less than first pulse times the drop_ratio
-					++count_below_drop_ratio;
-				}
-			}
-			if (count_below_drop_ratio > ip.below_drop_ratio) return true;
+	// i is start of pulse
+	for (auto j = i; i < j + ip.pulse_delta; ++j) {
+		if (ip.vt < *(j + 2) - *j) {
+			const int pulse1 = *i;
+			int numBelow = count_if_below_dr(i, j, [this, &pulse1](std::vector<int>::iterator iter) {return (*iter < (ip.drop_ratio* pulse1)); });
+			if (numBelow > ip.below_drop_ratio) return true;
 		}
-
 	}
 	return false;
 }
 
+int DataReducer::count_if_below_dr(std::vector<int>::iterator start, std::vector<int>::iterator end, std::function<bool(std::vector<int>::iterator&)> fn) {
+	int count = 0;
+	while (start != end) {
+		if (fn(start)) {
+			++count;
+		}
+		++start;
+	}
+	return count;
+}
 
 DataReducer::DataReducer(iniParams param, std::string file)
 {
@@ -41,7 +47,7 @@ void DataReducer::findPulses(std::ifstream& ifs)
 	this->copyToSmooth();
 	//Find the pulses
 
-	this->getPulses(smooth.begin(), smooth.end(), [this](std::vector<int>::iterator i) {return (ip.vt < *(i + 2) - *i);});
+	this->getPulses(smooth.begin(), smooth.end(), [this](std::vector<int>::iterator i) {return (ip.vt < *(i + 2) - *i); });
 }
 
 //[this](auto i) { return (this->vt < *(i + 2) - *i); }
@@ -56,7 +62,7 @@ int DataReducer::getNext(std::ifstream& ifs)
 	if (ifs.peek() == '\n') {
 		ifs.get();
 	}
-	if (ifs.peek() == '\r') { // might not be neededg
+	if (ifs.peek() == '\r') { // might not be needed
 		ifs.get();
 	}
 	return -1 * (std::atoi(sBuilder.str().c_str()));
@@ -69,10 +75,6 @@ void DataReducer::copyToSmooth()
 	for (auto i = normal.begin(); i != normal.begin() + 3; ++i) {
 		smooth.push_back(*i);
 	}
-	//smooth.resize(3);
-	//std::copy(normal.begin(), normal.begin() + 2, smooth); compiler doesn't like this for some reason
-	//smooth.resize(normal.size());
-	//std::copy(normal.begin(), normal.end(), smooth); // copy whole range
 	myForEach(normal.begin() + 3, normal.end() - 4);
 	for (auto i = normal.end() - 4; i != normal.end(); ++i) {
 		smooth.push_back(*i);
@@ -98,13 +100,16 @@ void DataReducer::getPulses(std::vector<int>::iterator start, std::vector<int>::
 		if (testPulse(start)) {
 			if (testPiggyback(start)) {
 				piggyback(start); // just prints what i is
+				for (int i = ip.pulse_delta; i != 0; --i) { // increment till outside the pulse_delta
+					++start;
+				}
 			}
 			else {
 				pulse(start); // print, calculate area
 				std::cout << "(" << std::accumulate(start, start + ip.width, 0) << ")" << std::endl;
-			}
-			while (*start <= *(start + 1)) {
-				++start;
+				while (*start <= *(start + 1)) { // increment after pulse till data starts dropping
+					++start;
+				}
 			}
 		}
 		++start;

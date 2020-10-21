@@ -41,6 +41,7 @@ private:
 	
 	void piggyback(std::vector<int>::iterator i);
 	void pulse(std::vector<int>::iterator i);
+	int count_if_below_dr(std::vector<int>::iterator start, std::vector<int>::iterator end, std::function<bool(std::vector<int>::iterator&)> fn);
 };
 
 
