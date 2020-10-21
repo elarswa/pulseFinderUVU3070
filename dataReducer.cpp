@@ -1,24 +1,43 @@
 #include "dataReducer.h"
 
-void DataReducer::piggyback(std::vector<int>::iterator i) {
-	std::cout << "Found piggyback at " << i - smooth.begin() << std::endl;
+void DataReducer::piggyback(size_t index) {
+	std::cout << "Found piggyback at " << index << std::endl;
 }
 
-void DataReducer::pulse(std::vector<int>::iterator i) {
-	std::cout << i - smooth.begin() << " ";
+void DataReducer::pulse(Pulse p, int area) {
+	std::cout << p.index << " (" << area << ")" << std::endl;
 }
 
-bool DataReducer::testPiggyback(std::vector<int>::iterator i) {
-	// i is start of pulse
-	for (auto j = i; i < j + ip.pulse_delta; ++j) {
-		if (ip.vt < *(j + 2) - *j) {
-			const int pulse1 = *i;
-			int numBelow = count_if_below_dr(i, j, [this, &pulse1](std::vector<int>::iterator iter) {return (*iter < (ip.drop_ratio* pulse1)); });
-			if (numBelow > ip.below_drop_ratio) return true;
+void DataReducer::testPiggyback() {
+
+	for (auto i = pList.begin(); i != pList.end(); ++i) {
+		std::vector<int>::iterator start = smooth.begin() + (*i).index;
+		int peak = *start;
+		int peakInd = 0;
+		while (start != smooth.begin() + (*i).index + ip.pulse_delta && start != smooth.begin() + (*(i + 1)).index) {
+			if (*start > peak) {
+				peak = *start;
+				peakInd = start - smooth.begin();
+			}
+			++start;
+		}
+		start = smooth.begin() + peakInd; // start at peak of first pulse
+
+		int startNextPulseIndex = (*(i + 1)).index;
+		int delta = (startNextPulseIndex - peakInd < ip.pulse_delta) ? startNextPulseIndex - peakInd : ip.pulse_delta;
+		if (i != pList.end() - 1 && count_if_below_dr(start, start + delta,[this, &peak](std::vector<int>::iterator iter) {return (*iter < (ip.drop_ratio* peak)); }) > ip.below_drop_ratio) {
+			piggyback((*i).index);
+		}
+		else {
+			int startNextPulseIndex = (*(i + 1)).index;
+			int endWidthIndex = (*i).index + ip.width;
+			std::vector<int>::iterator end = (startNextPulseIndex < endWidthIndex && i != pList.end() - 1) ? smooth.begin() + startNextPulseIndex : smooth.begin() + endWidthIndex;
+			int area = std::accumulate(smooth.begin() + (*i).index, end, 0);
+
+			pulse(*i, area);
 		}
 	}
-	return false;
-}
+ }
 
 int DataReducer::count_if_below_dr(std::vector<int>::iterator start, std::vector<int>::iterator end, std::function<bool(std::vector<int>::iterator&)> fn) {
 	int count = 0;
@@ -48,6 +67,11 @@ void DataReducer::findPulses(std::ifstream& ifs)
 	//Find the pulses
 
 	this->getPulses(smooth.begin(), smooth.end(), [this](std::vector<int>::iterator i) {return (ip.vt < *(i + 2) - *i); });
+
+	if (pList.size() > 0) {
+	std::cout << fileName.substr(2) << ":" << std::endl;
+	}
+	testPiggyback();
 }
 
 //[this](auto i) { return (this->vt < *(i + 2) - *i); }
@@ -56,8 +80,15 @@ int DataReducer::getNext(std::ifstream& ifs)
 	std::ostringstream sBuilder;
 	char c = ifs.get();
 	while (ifs.good() && c != '\n' && c != '\r') {
-		sBuilder << c;
-		c = ifs.get();
+		if (std::isdigit(c) || c == '-' || c == '\r' || c == '\n' || std::isspace(c)) {
+			if (!std::isspace(c)) {
+			sBuilder << c;
+			c = ifs.get();
+			}
+		} 
+		else {
+			throw std::runtime_error("Invalid file: " + fileName.substr(2));
+		}
 	}
 	if (ifs.peek() == '\n') {
 		ifs.get();
@@ -98,19 +129,10 @@ void DataReducer::getPulses(std::vector<int>::iterator start, std::vector<int>::
 {
 	while (start != end) {
 		if (testPulse(start)) {
-			if (testPiggyback(start)) {
-				piggyback(start); // just prints what i is
-				for (int i = ip.pulse_delta; i != 0; --i) { // increment till outside the pulse_delta
-					++start;
-				}
-			}
-			else {
-				pulse(start); // print, calculate area
-				std::cout << "(" << std::accumulate(start, start + ip.width, 0) << ")" << std::endl;
-				while (*start <= *(start + 1)) { // increment after pulse till data starts dropping
-					++start;
-				}
-			}
+			pList.push_back(Pulse(start - smooth.begin()));
+			do { // increment after pulse till data starts dropping
+				++start;
+			} while (*start <= *(start + 1));
 		}
 		++start;
 	}

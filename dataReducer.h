@@ -19,6 +19,11 @@ struct iniParams {
 	int below_drop_ratio;
 };
 
+struct Pulse {
+	Pulse(size_t i) : index(i) {}
+	size_t index;
+};
+
 class DataReducer {
 
 public:
@@ -31,16 +36,17 @@ private:
 	std::string fileName;
 	std::vector<int> normal;
 	std::vector<int> smooth;
+	std::vector<Pulse> pList;
 	
 	int getNext(std::ifstream &ifs);
 	void copyToSmooth();
 	void smoothIt(std::vector<int>::iterator& i);
 	void getPulses(std::vector<int>::iterator start, std::vector<int>::iterator end, std::function<bool(std::vector<int>::iterator)>);
 	void myForEach(std::vector<int>::iterator start, std::vector<int>::iterator end);
-	bool testPiggyback(std::vector<int>::iterator i);
+	void testPiggyback();
 	
-	void piggyback(std::vector<int>::iterator i);
-	void pulse(std::vector<int>::iterator i);
+	void piggyback(size_t index);
+	void pulse(Pulse p, int area);
 	int count_if_below_dr(std::vector<int>::iterator start, std::vector<int>::iterator end, std::function<bool(std::vector<int>::iterator&)> fn);
 };
 

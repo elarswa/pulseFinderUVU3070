@@ -37,12 +37,16 @@ int main(int argc, char* argv[]) {
 			//cout << entry.path() << endl;
 			string path = entry.path().string();
 			if (path.length() > 4 && path.substr(path.length() - 4) == ".dat") {
-				cout << path << ":" << endl;
 				ifstream file(path);
 				if (file.is_open()) {
 				//dr.findPulses(); called on each file in directory with .dat ending
 					DataReducer dr(ip, path);
-					dr.findPulses(file);
+					try {
+						dr.findPulses(file);
+					} 
+					catch (std::runtime_error& e) {
+						cout << e.what() << endl;
+					}
 					cout << endl;
 				}
 				else {
