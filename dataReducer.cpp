@@ -25,30 +25,30 @@ void DataReducer::testPiggyback() {
 
 		int startNextPulseIndex = (*(i + 1)).index;
 		int delta = (startNextPulseIndex - peakInd < ip.pulse_delta) ? startNextPulseIndex - peakInd : ip.pulse_delta;
-		if (i != pList.end() - 1 && count_if_below_dr(start, start + delta,[this, &peak](std::vector<int>::iterator iter) {return (*iter < (ip.drop_ratio* peak)); }) > ip.below_drop_ratio) {
+		if (i != pList.end() - 1 && std::count_if(start, start + delta,[this, &peak](int num) {return (num < (ip.drop_ratio * peak)); }) > ip.below_drop_ratio) {
 			piggyback((*i).index);
 		}
 		else {
 			int startNextPulseIndex = (*(i + 1)).index;
 			int endWidthIndex = (*i).index + ip.width;
-			std::vector<int>::iterator end = (startNextPulseIndex < endWidthIndex && i != pList.end() - 1) ? smooth.begin() + startNextPulseIndex : smooth.begin() + endWidthIndex;
-			int area = std::accumulate(smooth.begin() + (*i).index, end, 0);
+			std::vector<int>::iterator end = (startNextPulseIndex < endWidthIndex && i != pList.end() - 1) ? normal.begin() + startNextPulseIndex : normal.begin() + endWidthIndex;
+			int area = std::accumulate(normal.begin() + (*i).index, end, 0);
 
 			pulse(*i, area);
 		}
 	}
  }
 
-int DataReducer::count_if_below_dr(std::vector<int>::iterator start, std::vector<int>::iterator end, std::function<bool(std::vector<int>::iterator&)> fn) {
-	int count = 0;
-	while (start != end) {
-		if (fn(start)) {
-			++count;
-		}
-		++start;
-	}
-	return count;
-}
+//int DataReducer::count_if_below_dr(std::vector<int>::iterator start, std::vector<int>::iterator end, std::function<bool(std::vector<int>::iterator&)> fn) {
+//	int count = 0;
+//	while (start != end) {
+//		if (fn(start)) {
+//			++count;
+//		}
+//		++start;
+//	}
+//	return count;
+//}
 
 DataReducer::DataReducer(iniParams param, std::string file)
 {
@@ -103,12 +103,13 @@ int DataReducer::getNext(std::ifstream& ifs)
 
 void DataReducer::copyToSmooth()
 {
+	smooth.resize(normal.size());
 	for (auto i = normal.begin(); i != normal.begin() + 3; ++i) {
-		smooth.push_back(*i);
+		smooth[i - normal.begin()] = *i;
 	}
-	myForEach(normal.begin() + 3, normal.end() - 4);
+	myForEach(normal.begin() + 3, normal.end() - 4); // calls smooth it on the range provided
 	for (auto i = normal.end() - 4; i != normal.end(); ++i) {
-		smooth.push_back(*i);
+		smooth[i - normal.begin()] = *i;
 	}
 	/*std::ofstream ofs("smooth.txt", std::ios_base::trunc); // print to file to check
 	auto i = smooth.begin();
@@ -122,7 +123,7 @@ void DataReducer::copyToSmooth()
 
 void DataReducer::smoothIt(std::vector<int>::iterator& iter) {
 	int temp = (iter[-3] + 2 * iter[-2] + 3 * iter[-1] + 3 * iter[0] + 3 * iter[1] + 2 * iter[2] + iter[3]) / 15;
-	smooth.push_back(temp);
+	smooth[iter - normal.begin()] = temp;
 }
 
 void DataReducer::getPulses(std::vector<int>::iterator start, std::vector<int>::iterator end, std::function<bool(std::vector<int>::iterator)> testPulse)
